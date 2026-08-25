@@ -68,6 +68,24 @@ export const payments = sqliteTable("payments", {
   createdAt: createdAt(),
 });
 
+// Начисления из еженедельного реестра (загружается админом файлом .xlsx).
+// earnedAmount — заработано за период; heldAmount — удержано и добавлено к балансу
+// курьера (баланс = сумма всех heldAmount, пока не будет реестра финального расчёта);
+// paidOutAmount — выдано на руки в этот период (уже не в балансе, только для истории).
+export const payrollEntries = sqliteTable("payroll_entries", {
+  id: id(),
+  courierId: text("courier_id")
+    .notNull()
+    .references(() => couriers.id, { onDelete: "cascade" }),
+  period: text("period").notNull(), // как указано в реестре, напр. "17-23.08"
+  earnedAmount: integer("earned_amount").notNull(), // копейки
+  heldAmount: integer("held_amount").notNull(), // копейки, добавляется к courier.balance
+  paidOutAmount: integer("paid_out_amount").notNull().default(0), // копейки
+  batchId: text("batch_id").notNull(), // группирует записи одной загрузки реестра
+  sourceFileName: text("source_file_name"),
+  createdAt: createdAt(),
+});
+
 // senderType: COURIER | ADMIN
 export const chatMessages = sqliteTable("chat_messages", {
   id: id(),

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import type { Payment, FeedbackReport } from "../lib/api";
+import type { Payment, FeedbackReport, PayrollEntry } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { formatMoney, formatDateTime, STATUS_LABEL, STATUS_COLOR } from "../lib/format";
 import BottomNav from "../components/BottomNav";
@@ -10,10 +10,12 @@ export default function Profile() {
   const { courier, logout } = useAuth();
   const navigate = useNavigate();
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [payroll, setPayroll] = useState<PayrollEntry[]>([]);
   const [feedback, setFeedback] = useState<FeedbackReport[]>([]);
 
   useEffect(() => {
     api.get<{ balance: number; payments: Payment[] }>("/payments/me").then((r) => setPayments(r.payments));
+    api.get<PayrollEntry[]>("/payroll/me").then(setPayroll);
     api.get<FeedbackReport[]>("/feedback/me").then(setFeedback);
   }, []);
 
@@ -46,7 +48,28 @@ export default function Profile() {
         </div>
 
         <div className="card">
-          <h2>Выплаты</h2>
+          <h2>Начисления по неделям</h2>
+          <div className="muted" style={{ marginBottom: 10 }}>
+            «В баланс» — сумма, которая удерживается компанией и копится на вашем балансе до полного расчёта.
+          </div>
+          {payroll.length === 0 && <div className="muted">Пока нет начислений</div>}
+          {payroll.map((p) => (
+            <div key={p.id} className="shift-row" style={{ alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontWeight: 600 }}>{p.period}</div>
+                <div className="muted">Заработано: {formatMoney(p.earnedAmount)}</div>
+                <div className="muted">Выдано на руки: {formatMoney(p.paidOutAmount)}</div>
+              </div>
+              <div style={{ textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
+                +{formatMoney(p.heldAmount)}
+                <div className="muted" style={{ fontWeight: 400 }}>в баланс</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="card">
+          <h2>Выплаты вручную</h2>
           {payments.length === 0 && <div className="muted">Пока нет</div>}
           {payments.map((p) => (
             <div key={p.id} className="shift-row">

@@ -100,6 +100,25 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+export interface PayrollEntry {
+  id: string;
+  courierId: string;
+  period: string;
+  earnedAmount: number;
+  heldAmount: number;
+  paidOutAmount: number;
+  batchId: string;
+  sourceFileName: string | null;
+  createdAt: string;
+}
+
+export interface PayrollUploadResult {
+  batchId: string;
+  matchedCount: number;
+  unmatchedCount: number;
+  unmatched: { row: number; fullName: string; phone: string }[];
+}
+
 export interface ChatSummary {
   courierId: string;
   lastMessage: string | null;

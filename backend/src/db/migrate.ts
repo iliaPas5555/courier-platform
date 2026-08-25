@@ -54,6 +54,20 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 CREATE INDEX IF NOT EXISTS idx_payments_courier ON payments(courier_id);
 
+CREATE TABLE IF NOT EXISTS payroll_entries (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  period TEXT NOT NULL,
+  earned_amount INTEGER NOT NULL,
+  held_amount INTEGER NOT NULL,
+  paid_out_amount INTEGER NOT NULL DEFAULT 0,
+  batch_id TEXT NOT NULL,
+  source_file_name TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_payroll_courier_created ON payroll_entries(courier_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_payroll_batch ON payroll_entries(batch_id);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
   id TEXT PRIMARY KEY,
   courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,

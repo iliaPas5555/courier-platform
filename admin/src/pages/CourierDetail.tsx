@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
-import type { Courier, Shift, Payment, FeedbackReport } from "../lib/api";
+import type { Courier, Shift, Payment, FeedbackReport, PayrollEntry } from "../lib/api";
 import { formatMoney, formatDateTime, STATUS_LABEL, STATUS_COLOR } from "../lib/format";
 
 interface CourierCard {
@@ -9,6 +9,7 @@ interface CourierCard {
   shifts: Shift[];
   payments: Payment[];
   feedback: FeedbackReport[];
+  payroll: PayrollEntry[];
 }
 
 export default function CourierDetail() {
@@ -39,7 +40,7 @@ export default function CourierDetail() {
   if (error) return <div className="error-text">{error}</div>;
   if (!data) return <div className="muted">Загрузка...</div>;
 
-  const { courier, shifts, payments, feedback } = data;
+  const { courier, shifts, payments, feedback, payroll } = data;
 
   return (
     <div>
@@ -57,7 +58,7 @@ export default function CourierDetail() {
             <div>{courier.phone}</div>
           </div>
           <div>
-            <div className="muted">Баланс</div>
+            <div className="muted">Баланс (удержано, до расчёта)</div>
             <div>{formatMoney(courier.balance)}</div>
           </div>
           <div>
@@ -113,7 +114,40 @@ export default function CourierDetail() {
         </table>
       </div>
 
-      <h3>Выплаты</h3>
+      <h3>Начисления по реестру</h3>
+      <div className="card" style={{ padding: 0 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Период</th>
+              <th>Заработано</th>
+              <th>В баланс</th>
+              <th>Выдано на руки</th>
+              <th>Загружено</th>
+            </tr>
+          </thead>
+          <tbody>
+            {payroll.map((p) => (
+              <tr key={p.id}>
+                <td>{p.period}</td>
+                <td>{formatMoney(p.earnedAmount)}</td>
+                <td>{formatMoney(p.heldAmount)}</td>
+                <td>{formatMoney(p.paidOutAmount)}</td>
+                <td>{formatDateTime(p.createdAt)}</td>
+              </tr>
+            ))}
+            {payroll.length === 0 && (
+              <tr>
+                <td colSpan={5} className="muted" style={{ padding: 16 }}>
+                  Реестры ещё не загружались
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Выплаты (вручную)</h3>
       <div className="card" style={{ padding: 0 }}>
         <table>
           <thead>

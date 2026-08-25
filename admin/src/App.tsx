@@ -7,6 +7,7 @@ import Couriers from "./pages/Couriers";
 import CourierDetail from "./pages/CourierDetail";
 import Schedule from "./pages/Schedule";
 import Payments from "./pages/Payments";
+import Register from "./pages/Register";
 import ChatInbox from "./pages/ChatInbox";
 import ChatWithCourier from "./pages/ChatWithCourier";
 import FeedbackAll from "./pages/FeedbackAll";
@@ -32,6 +33,7 @@ function AppRoutes() {
         <Route path="/couriers/:id" element={<CourierDetail />} />
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/payments" element={<Payments />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/chat" element={<ChatInbox />} />
         <Route path="/chat/:courierId" element={<ChatWithCourier />} />
         <Route path="/feedback" element={<FeedbackAll />} />

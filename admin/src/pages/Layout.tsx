@@ -5,6 +5,7 @@ const links = [
   { to: "/couriers", label: "Курьеры" },
   { to: "/schedule", label: "Расписание" },
   { to: "/payments", label: "Выплаты" },
+  { to: "/register", label: "Реестр" },
   { to: "/chat", label: "Чат" },
   { to: "/feedback", label: "Обращения" },
 ];

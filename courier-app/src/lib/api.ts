@@ -96,6 +96,15 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+export interface PayrollEntry {
+  id: string;
+  period: string;
+  earnedAmount: number;
+  heldAmount: number;
+  paidOutAmount: number;
+  createdAt: string;
+}
+
 export interface AppNotification {
   id: string;
   type: string;

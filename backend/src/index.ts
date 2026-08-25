@@ -10,6 +10,7 @@ import { paymentsRouter } from "./routes/payments";
 import { chatRouter } from "./routes/chat";
 import { feedbackRouter } from "./routes/feedback";
 import { notificationsRouter } from "./routes/notifications";
+import { payrollRouter } from "./routes/payroll";
 import { startScheduler } from "./services/scheduler";
 import { startTelegramBot } from "./services/telegramBot";
 
@@ -28,6 +29,7 @@ app.use("/api/payments", paymentsRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/feedback", feedbackRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/payroll", payrollRouter);
 
 // Отдаём собранное курьерское PWA (courier-app/dist) по пути /app — тем же сервером.
 const courierDist = path.resolve(__dirname, "../../courier-app/dist");

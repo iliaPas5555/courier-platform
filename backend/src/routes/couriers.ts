@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../db/client";
-import { couriers, shifts, payments, feedbackReports } from "../db/schema";
+import { couriers, shifts, payments, feedbackReports, payrollEntries } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 
 export const couriersRouter = Router();
@@ -50,11 +50,19 @@ couriersRouter.get("/:id", requireAuth("admin"), (req, res) => {
     .orderBy(desc(feedbackReports.createdAt))
     .limit(30)
     .all();
+  const recentPayroll = db
+    .select()
+    .from(payrollEntries)
+    .where(eq(payrollEntries.courierId, req.params.id))
+    .orderBy(desc(payrollEntries.createdAt))
+    .limit(50)
+    .all();
 
   res.json({
     courier: stripSecret(courier),
     shifts: recentShifts,
     payments: recentPayments,
     feedback: recentFeedback,
+    payroll: recentPayroll,
   });
 });

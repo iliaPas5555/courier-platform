@@ -66,7 +66,7 @@ export default function Home() {
       <div className="top-bar">Привет, {courier?.fullName.split(" ")[0]} 👋</div>
       <div className="screen">
         <div className="balance-card">
-          <div className="label">Баланс</div>
+          <div className="label">Баланс (удержано до расчёта)</div>
           <div className="value">{formatMoney(courier?.balance ?? 0)}</div>
         </div>
 
