@@ -1,0 +1,93 @@
+// Простая идемпотентная миграция (CREATE TABLE IF NOT EXISTS) — без drizzle-kit,
+// чтобы не зависеть от загрузки внешних бинарников в песочнице.
+// Запуск: npm run db:migrate
+
+import { sqlite } from "./client";
+
+sqlite.exec(`
+CREATE TABLE IF NOT EXISTS admins (
+  id TEXT PRIMARY KEY,
+  full_name TEXT NOT NULL,
+  phone TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS couriers (
+  id TEXT PRIMARY KEY,
+  full_name TEXT NOT NULL,
+  phone TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  photo_url TEXT,
+  med_book_number TEXT NOT NULL,
+  bike_number TEXT NOT NULL,
+  telegram_chat_id TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  balance INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS shifts (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  scheduled_start INTEGER NOT NULL,
+  scheduled_end INTEGER NOT NULL,
+  check_in_at INTEGER,
+  check_out_at INTEGER,
+  status TEXT NOT NULL DEFAULT 'PLANNED',
+  late_reminder_sent_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_shifts_courier_start ON shifts(courier_id, scheduled_start);
+
+CREATE TABLE IF NOT EXISTS payments (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
+  period_from INTEGER NOT NULL,
+  period_to INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  paid_at INTEGER,
+  note TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_payments_courier ON payments(courier_id);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  sender_type TEXT NOT NULL,
+  text TEXT,
+  media_urls TEXT NOT NULL DEFAULT '[]',
+  telegram_message_id TEXT,
+  read_by_admin INTEGER NOT NULL DEFAULT 0,
+  read_by_courier INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_chat_courier_created ON chat_messages(courier_id, created_at);
+
+CREATE TABLE IF NOT EXISTS feedback_reports (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  shift_id TEXT REFERENCES shifts(id) ON DELETE SET NULL,
+  type TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  media_urls TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'NEW',
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_courier_created ON feedback_reports(courier_id, created_at);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  sent_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  read_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_courier_sent ON notifications(courier_id, sent_at);
+`);
+
+console.log("Миграция выполнена, таблицы готовы.");
