@@ -1,6 +1,6 @@
 // Тонкий клиент Telegram Bot API — используется backend'ом, чтобы переслать
-// сообщение курьера админу в Telegram. Сам бот (получение ответов админа)
-// работает отдельным процессом — см. /telegram-bot, который дергает наш API.
+// сообщение курьера админу в Telegram. Приём ответов админа (Reply в Telegram)
+// реализован тут же, в services/telegramBot.ts (long polling в этом же процессе).
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;

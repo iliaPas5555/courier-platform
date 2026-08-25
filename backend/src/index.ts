@@ -11,6 +11,7 @@ import { chatRouter } from "./routes/chat";
 import { feedbackRouter } from "./routes/feedback";
 import { notificationsRouter } from "./routes/notifications";
 import { startScheduler } from "./services/scheduler";
+import { startTelegramBot } from "./services/telegramBot";
 
 const app = express();
 
@@ -58,4 +59,5 @@ app.listen(PORT, () => {
   if (fs.existsSync(adminDist)) console.log("Админ-панель отдаётся тем же сервером из admin/dist");
   if (fs.existsSync(courierDist)) console.log("Курьерское приложение отдаётся тем же сервером из courier-app/dist (/app)");
   startScheduler();
+  startTelegramBot();
 });
