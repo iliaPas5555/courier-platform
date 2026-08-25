@@ -28,11 +28,20 @@ app.use("/api/chat", chatRouter);
 app.use("/api/feedback", feedbackRouter);
 app.use("/api/notifications", notificationsRouter);
 
+// Отдаём собранное курьерское PWA (courier-app/dist) по пути /app — тем же сервером.
+const courierDist = path.resolve(__dirname, "../../courier-app/dist");
+if (fs.existsSync(courierDist)) {
+  app.use("/app", express.static(courierDist));
+  app.get(/^\/app(\/.*)?$/, (_req, res) => {
+    res.sendFile(path.join(courierDist, "index.html"));
+  });
+}
+
 // Отдаём собранную админ-панель (admin/dist) тем же сервером — единый порт/домен для деплоя.
 const adminDist = path.resolve(__dirname, "../../admin/dist");
 if (fs.existsSync(adminDist)) {
   app.use(express.static(adminDist));
-  app.get(/^(?!\/api|\/uploads).*/, (_req, res) => {
+  app.get(/^(?!\/api|\/uploads|\/app).*/, (_req, res) => {
     res.sendFile(path.join(adminDist, "index.html"));
   });
 }
@@ -47,5 +56,6 @@ const PORT = Number(process.env.PORT || 4000);
 app.listen(PORT, () => {
   console.log(`Courier platform API запущен на порту ${PORT}`);
   if (fs.existsSync(adminDist)) console.log("Админ-панель отдаётся тем же сервером из admin/dist");
+  if (fs.existsSync(courierDist)) console.log("Курьерское приложение отдаётся тем же сервером из courier-app/dist (/app)");
   startScheduler();
 });
