@@ -12,6 +12,7 @@ interface AuthState {
   admin: Admin | null;
   loading: boolean;
   login: (phone: string, password: string) => Promise<void>;
+  register: (fullName: string, phone: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -36,13 +37,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const register = useCallback(async (fullName: string, phone: string, password: string) => {
+    setLoading(true);
+    try {
+      const res = await api.post<{ token: string; admin: Admin }>("/auth/admin/register", {
+        fullName,
+        phone,
+        password,
+      });
+      setToken(res.token);
+      localStorage.setItem("admin_profile", JSON.stringify(res.admin));
+      setAdmin(res.admin);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     setToken(null);
     localStorage.removeItem("admin_profile");
     setAdmin(null);
   }, []);
 
-  return <AuthContext.Provider value={{ admin: getToken() ? admin : null, loading, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ admin: getToken() ? admin : null, loading, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

@@ -79,3 +79,33 @@ authRouter.post("/admin/login", (req, res) => {
   const token = signToken({ id: admin.id, role: "admin" });
   res.json({ token, admin: { ...admin, passwordHash: undefined } });
 });
+
+const adminRegisterSchema = z.object({
+  fullName: z.string().min(2, "Укажите ФИО"),
+  phone: z.string().min(5, "Укажите телефон"),
+  password: z.string().min(6, "Пароль минимум 6 символов"),
+});
+
+// Самостоятельная регистрация администратора прямо со страницы входа (без приглашения от
+// другого админа) — сделано открытым по явной просьбе владельца платформы. Ссылку на админку
+// не публикуют посторонним, поэтому риск случайной регистрации чужими людьми низкий.
+authRouter.post("/admin/register", (req, res) => {
+  const parsed = adminRegisterSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  const existing = db.select().from(admins).where(eq(admins.phone, parsed.data.phone)).get();
+  if (existing) return res.status(409).json({ error: "Администратор с таким телефоном уже зарегистрирован" });
+
+  const admin = db
+    .insert(admins)
+    .values({
+      fullName: parsed.data.fullName,
+      phone: parsed.data.phone,
+      passwordHash: hashPassword(parsed.data.password),
+    })
+    .returning()
+    .get();
+
+  const token = signToken({ id: admin.id, role: "admin" });
+  res.status(201).json({ token, admin: { ...admin, passwordHash: undefined } });
+});
