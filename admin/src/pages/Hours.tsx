@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, downloadFile } from "../lib/api";
 import type { HoursSummary } from "../lib/api";
 
@@ -34,9 +35,11 @@ export default function Hours() {
 
       <div className="card">
         <p className="muted" style={{ margin: 0 }}>
-          Факт — по нашим сменам (отметка выхода/окончания). Красная заливка — смена короче 12 часов.
-          Оранжевая рамка — расхождение с данными HR-платформы (hiring.samokat.ru) больше 0.5 часа; наведите
-          курсор на ячейку, чтобы увидеть подтверждённые там часы. Период: {data ? `${data.from} — ${data.to}` : "…"}
+          Факт — по нашим сменам (отметка выхода/окончания), а если её нет — подтверждённые часы курьера
+          (см. «Табели»). Красная заливка — смена короче 12 часов. Оранжевая рамка — расхождение с данными
+          HR-платформы (hiring.samokat.ru) больше 0.5 часа. Чёрная заливка — «не вышел» (ожидались часы по
+          плану, но нигде не зафиксировано ни одного отработанного часа). Наведите курсор на ячейку для деталей.
+          Период: {data ? `${data.from} — ${data.to}` : "…"}
         </p>
       </div>
 
@@ -52,35 +55,48 @@ export default function Hours() {
                   <th key={d}>{formatShortDate(d)}</th>
                 ))}
                 <th>Итого</th>
+                <th>Опоздания</th>
               </tr>
             </thead>
             <tbody>
               {data.couriers.map((c) => (
                 <tr key={c.courierId}>
                   <td className="name-col">{c.fullName}</td>
-                  {c.days.map((d) => (
-                    <td
-                      key={d.date}
-                      className={
-                        (d.isShort ? "hours-cell-short " : "") +
-                        (d.mismatch ? "hours-cell-mismatch " : "") +
-                        (!d.factHours ? "hours-cell-empty" : "")
-                      }
-                      title={
-                        d.samokatConfirmedHours != null
-                          ? `HR-платформа: подтв. ${d.samokatConfirmedHours} ч / интервалы ${d.samokatIntervalHours ?? "—"} ч`
-                          : "Нет данных HR-платформы"
-                      }
-                    >
-                      {d.factHours || "—"}
-                    </td>
-                  ))}
+                  {c.days.map((d) => {
+                    const shown = d.factHours || d.selfReportedHours || 0;
+                    return (
+                      <td
+                        key={d.date}
+                        className={
+                          (d.noShow ? "hours-cell-noshow " : d.isShort ? "hours-cell-short " : "") +
+                          (d.mismatch ? "hours-cell-mismatch " : "") +
+                          (!shown ? "hours-cell-empty" : "")
+                        }
+                        title={
+                          [
+                            d.samokatConfirmedHours != null
+                              ? `HR-платформа: подтв. ${d.samokatConfirmedHours} ч / интервалы ${d.samokatIntervalHours ?? "—"} ч`
+                              : "Нет данных HR-платформы",
+                            d.selfReportedHours != null ? `Проставлено курьером и подтверждено: ${d.selfReportedHours} ч` : "",
+                            d.noShow ? "Не вышел" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
+                        }
+                      >
+                        {shown || "—"}
+                      </td>
+                    );
+                  })}
                   <td style={{ fontWeight: 700 }}>{c.totalFactHours}</td>
+                  <td>
+                    <Link to={`/lateness?courierId=${c.courierId}`}>{c.latenessCount || 0}</Link>
+                  </td>
                 </tr>
               ))}
               {data.couriers.length === 0 && (
                 <tr>
-                  <td colSpan={data.dates.length + 2} className="muted" style={{ padding: 16 }}>
+                  <td colSpan={data.dates.length + 3} className="muted" style={{ padding: 16 }}>
                     Курьеров пока нет
                   </td>
                 </tr>

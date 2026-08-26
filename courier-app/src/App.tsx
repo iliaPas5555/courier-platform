@@ -7,6 +7,7 @@ import Shifts from "./pages/Shifts";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 import FeedbackNew from "./pages/FeedbackNew";
+import HoursSubmit from "./pages/HoursSubmit";
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { courier } = useAuth();
@@ -55,6 +56,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <FeedbackNew />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/hours/submit"
+        element={
+          <RequireAuth>
+            <HoursSubmit />
           </RequireAuth>
         }
       />

@@ -166,6 +166,8 @@ export interface HoursDay {
   samokatConfirmedHours: number | null;
   samokatIntervalHours: number | null;
   mismatch: boolean;
+  selfReportedHours: number | null;
+  noShow: boolean;
 }
 
 export interface HoursSummaryCourier {
@@ -173,7 +175,35 @@ export interface HoursSummaryCourier {
   fullName: string;
   phone: string;
   totalFactHours: number;
+  latenessCount: number;
   days: HoursDay[];
+}
+
+export interface HoursEntry {
+  id: string;
+  courierId: string;
+  date: string;
+  hours: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  adminNote: string | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+  courier: { id: string; fullName: string; phone: string } | null;
+}
+
+export interface LatenessEntry {
+  id: string;
+  courierId: string;
+  date: string;
+  note: string | null;
+  createdAt: string;
+  courier: { id: string; fullName: string } | null;
+}
+
+export interface LatenessStat {
+  courierId: string;
+  fullName: string;
+  count: number;
 }
 
 export interface HoursSummary {

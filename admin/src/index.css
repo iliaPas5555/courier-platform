@@ -228,5 +228,7 @@ tr.clickable:hover { background: #f9fafb; cursor: pointer; }
 }
 .hours-table th.name-col, .hours-table td.name-col { text-align: left; position: sticky; left: 0; background: var(--surface); }
 .hours-cell-short { background: #fef2f2; color: #b91c1c; font-weight: 700; }
+.hours-cell-noshow { background: #111827; color: white; font-weight: 700; }
 .hours-cell-mismatch { box-shadow: inset 0 0 0 2px #f59e0b; }
 .hours-cell-empty { color: var(--text-muted); }
+.btn-sm { padding: 5px 10px; font-size: 13px; }

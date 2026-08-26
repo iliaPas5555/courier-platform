@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq, desc, and, gte, lt } from "drizzle-orm";
+import { eq, desc, and, gte, lt, lte } from "drizzle-orm";
 import { db } from "../db/client";
-import { shifts, notifications, couriers, samokatHours } from "../db/schema";
+import { shifts, notifications, couriers, samokatHours, hoursEntries, latenessEntries } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import {
   dateKey,
@@ -176,6 +176,14 @@ shiftsRouter.get("/hours/summary", requireAuth("admin"), (req, res) => {
     .where(and(gte(shifts.scheduledStart, from), lt(shifts.scheduledStart, to)))
     .all();
   const samokatRows = db.select().from(samokatHours).all();
+  const hoursEntryRows = db.select().from(hoursEntries).where(eq(hoursEntries.status, "APPROVED")).all();
+  const fromKey = dateKey(from);
+  const toKey = dateKey(addDays(to, -1));
+  const latenessRows = db
+    .select()
+    .from(latenessEntries)
+    .where(and(gte(latenessEntries.date, fromKey), lte(latenessEntries.date, toKey)))
+    .all();
 
   const dates: string[] = [];
   for (let d = new Date(from); d < to; d = addDays(d, 1)) dates.push(dateKey(d));
@@ -185,6 +193,10 @@ shiftsRouter.get("/hours/summary", requireAuth("admin"), (req, res) => {
     const cSamokat = new Map(
       samokatRows.filter((r) => r.courierId === c.id).map((r) => [r.date, r])
     );
+    const cSelfReported = new Map(
+      hoursEntryRows.filter((r) => r.courierId === c.id).map((r) => [r.date, r.hours])
+    );
+    const latenessCount = latenessRows.filter((l) => l.courierId === c.id).length;
 
     let totalFact = 0;
     const days = dates.map((date) => {
@@ -192,7 +204,10 @@ shiftsRouter.get("/hours/summary", requireAuth("admin"), (req, res) => {
       const fact = shift ? round1(factHours(shift)) : 0;
       const plan = shift ? round1(planHours(shift)) : 0;
       const samokat = cSamokat.get(date);
+      const selfReportedHours = cSelfReported.get(date) ?? null;
       totalFact += fact;
+      const expected = plan || samokat?.intervalHours || 0;
+      const actual = fact || samokat?.confirmedHours || selfReportedHours || 0;
       return {
         date,
         planHours: plan,
@@ -202,6 +217,8 @@ shiftsRouter.get("/hours/summary", requireAuth("admin"), (req, res) => {
         samokatIntervalHours: samokat?.intervalHours ?? null,
         mismatch:
           samokat?.confirmedHours != null && Math.abs((samokat.confirmedHours ?? 0) - fact) > 0.5,
+        selfReportedHours,
+        noShow: expected > 0 && actual === 0,
       };
     });
 
@@ -210,9 +227,10 @@ shiftsRouter.get("/hours/summary", requireAuth("admin"), (req, res) => {
       fullName: c.fullName,
       phone: c.phone,
       totalFactHours: round1(totalFact),
+      latenessCount,
       days,
     };
   });
 
-  res.json({ from: dateKey(from), to: dateKey(addDays(to, -1)), dates, couriers: result });
+  res.json({ from: fromKey, to: toKey, dates, couriers: result });
 });

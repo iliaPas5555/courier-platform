@@ -7,6 +7,8 @@ const links = [
   { to: "/payments", label: "Выплаты" },
   { to: "/register", label: "Реестр" },
   { to: "/hours", label: "Часы" },
+  { to: "/hours-entries", label: "Табели" },
+  { to: "/lateness", label: "Опоздания" },
   { to: "/profile-requests", label: "Заявки" },
   { to: "/chat", label: "Чат" },
   { to: "/feedback", label: "Обращения" },

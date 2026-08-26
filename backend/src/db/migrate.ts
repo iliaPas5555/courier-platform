@@ -116,6 +116,29 @@ CREATE TABLE IF NOT EXISTS samokat_hours (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_samokat_hours_courier_date ON samokat_hours(courier_id, date);
 
+CREATE TABLE IF NOT EXISTS hours_entries (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  hours REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  admin_note TEXT,
+  submitted_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  reviewed_at INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hours_entries_courier_date ON hours_entries(courier_id, date);
+CREATE INDEX IF NOT EXISTS idx_hours_entries_status ON hours_entries(status);
+
+CREATE TABLE IF NOT EXISTS lateness_entries (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  note TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_lateness_courier ON lateness_entries(courier_id);
+CREATE INDEX IF NOT EXISTS idx_lateness_date ON lateness_entries(date);
+
 CREATE TABLE IF NOT EXISTS notifications (
   id TEXT PRIMARY KEY,
   courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,

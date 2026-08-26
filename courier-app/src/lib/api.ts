@@ -139,6 +139,18 @@ export interface HoursMe {
   days: HoursDay[];
 }
 
+export interface HoursEntryDay {
+  date: string;
+  hours: number | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | null;
+  adminNote?: string | null;
+}
+
+export interface HoursEntriesMe {
+  weekStart: string;
+  days: HoursEntryDay[];
+}
+
 export interface AppNotification {
   id: string;
   type: string;

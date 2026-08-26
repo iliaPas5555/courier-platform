@@ -86,6 +86,10 @@ export default function Home() {
           )}
         </div>
 
+        <Link to="/hours/submit" className="btn" style={{ marginBottom: 14 }}>
+          🕒 Проставить часы за неделю
+        </Link>
+
         {hours?.days.some((d) => d.isShort) && (
           <div className="alert-banner">
             У вас была смена короче 12 часов. Пожалуйста, укажите причину в{" "}

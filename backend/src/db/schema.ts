@@ -151,7 +151,39 @@ export const samokatHours = sqliteTable(
   })
 );
 
-// type: SHIFT_REMINDER | SHIFT_NOT_STARTED | PAYMENT_RECEIVED | CHAT_REPLY | GENERIC | SHORT_SHIFT | PROFILE_REQUEST
+// Курьер сам проставляет отработанные часы за день (например, за неделю разом) — попадают
+// в сверку и статистику только после одобрения админом. status: PENDING | APPROVED | REJECTED
+export const hoursEntries = sqliteTable(
+  "hours_entries",
+  {
+    id: id(),
+    courierId: text("courier_id")
+      .notNull()
+      .references(() => couriers.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // 'YYYY-MM-DD'
+    hours: real("hours").notNull(),
+    status: text("status").notNull().default("PENDING"),
+    adminNote: text("admin_note"),
+    submittedAt: integer("submitted_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+    reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+  },
+  (t) => ({
+    courierDate: uniqueIndex("idx_hours_entries_courier_date").on(t.courierId, t.date),
+  })
+);
+
+// Ручная фиксация опозданий администратором — для статистики по курьерам (страница «Опоздания»).
+export const latenessEntries = sqliteTable("lateness_entries", {
+  id: id(),
+  courierId: text("courier_id")
+    .notNull()
+    .references(() => couriers.id, { onDelete: "cascade" }),
+  date: text("date").notNull(), // 'YYYY-MM-DD'
+  note: text("note"),
+  createdAt: createdAt(),
+});
+
+// type: SHIFT_REMINDER | SHIFT_NOT_STARTED | PAYMENT_RECEIVED | CHAT_REPLY | GENERIC | SHORT_SHIFT | PROFILE_REQUEST | HOURS_ENTRY
 export const notifications = sqliteTable("notifications", {
   id: id(),
   courierId: text("courier_id")
