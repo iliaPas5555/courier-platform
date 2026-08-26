@@ -65,6 +65,13 @@ export async function downloadFile(path: string, filename: string) {
 // ---- Типы ----
 export type City = "МСК" | "СПБ";
 
+export interface Admin {
+  id: string;
+  fullName: string;
+  phone: string;
+  createdAt: string;
+}
+
 export interface Courier {
   id: string;
   fullName: string;

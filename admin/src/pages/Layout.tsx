@@ -12,6 +12,7 @@ const links = [
   { to: "/profile-requests", label: "Заявки" },
   { to: "/chat", label: "Чат" },
   { to: "/feedback", label: "Обращения" },
+  { to: "/admins", label: "Администраторы" },
 ];
 
 export default function Layout() {

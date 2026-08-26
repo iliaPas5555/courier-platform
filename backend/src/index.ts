@@ -16,6 +16,7 @@ import { reportsRouter } from "./routes/reports";
 import { samokatRouter } from "./routes/samokat";
 import { hoursEntriesRouter } from "./routes/hoursEntries";
 import { latenessRouter } from "./routes/lateness";
+import { adminsRouter } from "./routes/admins";
 import { startScheduler } from "./services/scheduler";
 import { startTelegramBot } from "./services/telegramBot";
 
@@ -40,6 +41,7 @@ app.use("/api/reports", reportsRouter);
 app.use("/api/samokat", samokatRouter);
 app.use("/api/hours-entries", hoursEntriesRouter);
 app.use("/api/lateness", latenessRouter);
+app.use("/api/admins", adminsRouter);
 
 // Отдаём собранное курьерское PWA (courier-app/dist) по пути /app — тем же сервером.
 const courierDist = path.resolve(__dirname, "../../courier-app/dist");

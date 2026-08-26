@@ -15,6 +15,7 @@ import Hours from "./pages/Hours";
 import ProfileRequests from "./pages/ProfileRequests";
 import HoursEntries from "./pages/HoursEntries";
 import Lateness from "./pages/Lateness";
+import Admins from "./pages/Admins";
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { admin } = useAuth();
@@ -41,6 +42,7 @@ function AppRoutes() {
         <Route path="/hours" element={<Hours />} />
         <Route path="/hours-entries" element={<HoursEntries />} />
         <Route path="/lateness" element={<Lateness />} />
+        <Route path="/admins" element={<Admins />} />
         <Route path="/profile-requests" element={<ProfileRequests />} />
         <Route path="/chat" element={<ChatInbox />} />
         <Route path="/chat/:courierId" element={<ChatWithCourier />} />
