@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS couriers (
   photo_url TEXT,
   med_book_number TEXT NOT NULL,
   bike_number TEXT NOT NULL,
+  city TEXT,
+  personnel_number TEXT,
   telegram_chat_id TEXT,
   is_active INTEGER NOT NULL DEFAULT 1,
   balance INTEGER NOT NULL DEFAULT 0,
@@ -120,6 +122,8 @@ CREATE TABLE IF NOT EXISTS hours_entries (
   id TEXT PRIMARY KEY,
   courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
   date TEXT NOT NULL,
+  period_start TEXT,
+  period_end TEXT,
   hours REAL NOT NULL,
   status TEXT NOT NULL DEFAULT 'PENDING',
   admin_note TEXT,
@@ -149,5 +153,20 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_courier_sent ON notifications(courier_id, sent_at);
 `);
+
+// Идемпотентные ALTER TABLE для колонок, добавленных ПОСЛЕ первого релиза таблицы —
+// на уже существующей базе CREATE TABLE IF NOT EXISTS их не добавит.
+function ensureColumn(table: string, column: string, ddl: string) {
+  const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+    console.log(`Добавлена колонка ${table}.${column}`);
+  }
+}
+
+ensureColumn("couriers", "city", "city TEXT");
+ensureColumn("couriers", "personnel_number", "personnel_number TEXT");
+ensureColumn("hours_entries", "period_start", "period_start TEXT");
+ensureColumn("hours_entries", "period_end", "period_end TEXT");
 
 console.log("Миграция выполнена, таблицы готовы.");

@@ -14,6 +14,7 @@ const registerSchema = z.object({
   password: z.string().min(6, "Пароль минимум 6 символов"),
   medBookNumber: z.string().min(1, "Укажите номер медицинской книжки"),
   bikeNumber: z.string().min(1, "Укажите номер велосипеда"),
+  city: z.enum(["МСК", "СПБ"], { message: "Укажите город: МСК или СПБ" }),
 });
 
 // Регистрация курьера. Фото — отдельным полем формы (multipart), необязательное на этом шаге,
@@ -23,7 +24,7 @@ authRouter.post("/courier/register", upload.single("photo"), (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0].message });
   }
-  const { fullName, phone, password, medBookNumber, bikeNumber } = parsed.data;
+  const { fullName, phone, password, medBookNumber, bikeNumber, city } = parsed.data;
 
   const existing = db.select().from(couriers).where(eq(couriers.phone, phone)).get();
   if (existing) {
@@ -40,6 +41,7 @@ authRouter.post("/courier/register", upload.single("photo"), (req, res) => {
       passwordHash: hashPassword(password),
       medBookNumber,
       bikeNumber,
+      city,
       photoUrl,
     })
     .returning()

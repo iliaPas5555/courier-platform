@@ -31,3 +31,14 @@ export function addDays(d: Date, n: number): Date {
 export function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
+
+// Часы между двумя отметками времени 'HH:MM' одного дня. Если конец не позже начала —
+// считаем, что смена ушла за полночь (конец на следующий день).
+export function hoursBetween(periodStart: string, periodEnd: string): number {
+  const [sh, sm] = periodStart.split(":").map(Number);
+  const [eh, em] = periodEnd.split(":").map(Number);
+  const startMin = sh * 60 + sm;
+  let endMin = eh * 60 + em;
+  if (endMin <= startMin) endMin += 24 * 60;
+  return round1((endMin - startMin) / 60);
+}

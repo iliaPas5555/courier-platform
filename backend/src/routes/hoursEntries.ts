@@ -7,24 +7,29 @@ import { eq, and, desc, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { hoursEntries, couriers, notifications } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
-import { startOfWeek, addDays, dateKey } from "../lib/hours";
+import { startOfWeek, addDays, dateKey, hoursBetween } from "../lib/hours";
 
 export const hoursEntriesRouter = Router();
 
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 const dayInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Дата в формате YYYY-MM-DD"),
-  hours: z.number().min(0).max(24),
+  periodStart: z.string().regex(TIME_RE, "Время в формате ЧЧ:ММ"),
+  periodEnd: z.string().regex(TIME_RE, "Время в формате ЧЧ:ММ"),
 });
 
-// Курьер: проставить/обновить часы за один или несколько дней (обычно — за неделю разом).
-// Повторная отправка по той же дате (в т.ч. уже одобренной) снова уводит запись в PENDING.
+// Курьер: проставить/обновить период смены (с — по) за один или несколько дней (обычно —
+// за неделю разом). Часы считает сервер. Повторная отправка по той же дате (в т.ч. уже
+// одобренной) снова уводит запись в PENDING.
 hoursEntriesRouter.post("/", requireAuth("courier"), (req, res) => {
   const parsed = z.object({ days: z.array(dayInput).min(1) }).safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "Проверьте формат часов", details: parsed.error.issues });
+    return res.status(400).json({ error: "Проверьте формат периода", details: parsed.error.issues });
   }
 
   const saved = parsed.data.days.map((day) => {
+    const hours = hoursBetween(day.periodStart, day.periodEnd);
     const existing = db
       .select()
       .from(hoursEntries)
@@ -34,14 +39,22 @@ hoursEntriesRouter.post("/", requireAuth("courier"), (req, res) => {
     if (existing) {
       return db
         .update(hoursEntries)
-        .set({ hours: day.hours, status: "PENDING", adminNote: null, reviewedAt: null, submittedAt: new Date() })
+        .set({
+          periodStart: day.periodStart,
+          periodEnd: day.periodEnd,
+          hours,
+          status: "PENDING",
+          adminNote: null,
+          reviewedAt: null,
+          submittedAt: new Date(),
+        })
         .where(eq(hoursEntries.id, existing.id))
         .returning()
         .get();
     }
     return db
       .insert(hoursEntries)
-      .values({ courierId: req.auth!.id, date: day.date, hours: day.hours })
+      .values({ courierId: req.auth!.id, date: day.date, periodStart: day.periodStart, periodEnd: day.periodEnd, hours })
       .returning()
       .get();
   });
@@ -60,7 +73,9 @@ hoursEntriesRouter.get("/me", requireAuth("courier"), (req, res) => {
 
   res.json({
     weekStart: dateKey(weekStart),
-    days: dates.map((date) => byDate.get(date) ?? { date, hours: null, status: null }),
+    days: dates.map(
+      (date) => byDate.get(date) ?? { date, periodStart: null, periodEnd: null, hours: null, status: null }
+    ),
   });
 });
 

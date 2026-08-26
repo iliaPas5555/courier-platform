@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import type { Courier, AdminCreateCourierResult } from "../lib/api";
+import type { Courier, AdminCreateCourierResult, City } from "../lib/api";
 import { formatMoney, formatDate } from "../lib/format";
 
 export default function Couriers() {
@@ -49,10 +49,11 @@ export default function Couriers() {
           <thead>
             <tr>
               <th>ФИО</th>
+              <th>Город</th>
               <th>Телефон</th>
-              <th>Мед. книжка</th>
-              <th>Велосипед</th>
+              <th>Табельный №</th>
               <th>Баланс</th>
+              <th>Активен</th>
               <th>С нами с</th>
             </tr>
           </thead>
@@ -60,16 +61,17 @@ export default function Couriers() {
             {couriers?.map((c) => (
               <tr key={c.id} className="clickable" onClick={() => navigate(`/couriers/${c.id}`)}>
                 <td>{c.fullName}</td>
+                <td>{c.city ?? "—"}</td>
                 <td>{c.phone}</td>
-                <td>{c.medBookNumber}</td>
-                <td>{c.bikeNumber}</td>
+                <td>{c.personnelNumber || "—"}</td>
                 <td>{formatMoney(c.balance)}</td>
+                <td>{c.isActive ? "да" : "нет"}</td>
                 <td>{formatDate(c.createdAt)}</td>
               </tr>
             ))}
             {couriers?.length === 0 && (
               <tr>
-                <td colSpan={6} className="muted" style={{ padding: 20 }}>
+                <td colSpan={7} className="muted" style={{ padding: 20 }}>
                   Пока нет зарегистрированных курьеров
                 </td>
               </tr>
@@ -103,6 +105,8 @@ function AddCourierModal({
   const [phone, setPhone] = useState("");
   const [medBookNumber, setMedBookNumber] = useState("");
   const [bikeNumber, setBikeNumber] = useState("");
+  const [city, setCity] = useState<City>("МСК");
+  const [personnelNumber, setPersonnelNumber] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +121,8 @@ function AddCourierModal({
       form.append("phone", phone);
       form.append("medBookNumber", medBookNumber);
       form.append("bikeNumber", bikeNumber);
+      form.append("city", city);
+      if (personnelNumber.trim()) form.append("personnelNumber", personnelNumber.trim());
       if (photo) form.append("photo", photo);
       const result = await api.post<AdminCreateCourierResult>("/couriers", form);
       onCreated(result);
@@ -147,6 +153,17 @@ function AddCourierModal({
           <div className="field">
             <label>Номер велосипеда</label>
             <input value={bikeNumber} onChange={(e) => setBikeNumber(e.target.value)} required />
+          </div>
+          <div className="field">
+            <label>Город</label>
+            <select value={city} onChange={(e) => setCity(e.target.value as City)} required>
+              <option value="МСК">МСК</option>
+              <option value="СПБ">СПБ</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Табельный номер (необязательно)</label>
+            <input value={personnelNumber} onChange={(e) => setPersonnelNumber(e.target.value)} />
           </div>
           <div className="field">
             <label>Фото (необязательно)</label>

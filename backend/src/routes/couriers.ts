@@ -32,11 +32,15 @@ couriersRouter.get("/", requireAuth("admin"), (_req, res) => {
   res.json(list.map(stripSecret));
 });
 
+const CITIES = ["МСК", "СПБ"] as const;
+
 const adminCreateSchema = z.object({
   fullName: z.string().min(2, "Укажите ФИО"),
   phone: z.string().min(5, "Укажите телефон"),
   medBookNumber: z.string().min(1, "Укажите номер медицинской книжки"),
   bikeNumber: z.string().min(1, "Укажите номер велосипеда"),
+  city: z.enum(CITIES, { message: "Укажите город: МСК или СПБ" }),
+  personnelNumber: z.string().optional(),
 });
 
 // Админ: зарегистрировать курьера напрямую из панели (минуя саморегистрацию в приложении).
@@ -58,6 +62,35 @@ couriersRouter.post("/", requireAuth("admin"), upload.single("photo"), (req, res
     .get();
 
   res.status(201).json({ courier: stripSecret(courier), password });
+});
+
+const adminUpdateSchema = z.object({
+  fullName: z.string().min(2).optional(),
+  phone: z.string().min(5).optional(),
+  medBookNumber: z.string().min(1).optional(),
+  bikeNumber: z.string().min(1).optional(),
+  city: z.enum(CITIES).optional(),
+  personnelNumber: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
+// Админ: редактировать карточку курьера — город, табельный номер, активность и т.п.
+couriersRouter.patch("/:id", requireAuth("admin"), (req, res) => {
+  const parsed = adminUpdateSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  if (Object.keys(parsed.data).length === 0) return res.status(400).json({ error: "Нет изменений" });
+
+  const courier = db.select().from(couriers).where(eq(couriers.id, req.params.id)).get();
+  if (!courier) return res.status(404).json({ error: "Курьер не найден" });
+
+  const updated = db
+    .update(couriers)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(eq(couriers.id, req.params.id))
+    .returning()
+    .get();
+
+  res.json(stripSecret(updated));
 });
 
 // Админ: полная карточка курьера — профиль + последние смены/выплаты/обращения

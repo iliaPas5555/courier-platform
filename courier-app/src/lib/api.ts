@@ -46,6 +46,8 @@ export const api = {
 export { API_BASE };
 
 // ---- Типы ----
+export type City = "МСК" | "СПБ";
+
 export interface Courier {
   id: string;
   fullName: string;
@@ -53,6 +55,7 @@ export interface Courier {
   photoUrl: string | null;
   medBookNumber: string;
   bikeNumber: string;
+  city: City | null;
   isActive: boolean;
   balance: number;
   createdAt: string;
@@ -141,6 +144,8 @@ export interface HoursMe {
 
 export interface HoursEntryDay {
   date: string;
+  periodStart: string | null;
+  periodEnd: string | null;
   hours: number | null;
   status: "PENDING" | "APPROVED" | "REJECTED" | null;
   adminNote?: string | null;

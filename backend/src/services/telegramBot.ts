@@ -5,7 +5,9 @@
 // той же логикой, что и обычный ответ из веб-панели.
 
 import { db } from "../db/client";
-import { chatMessages, notifications } from "../db/schema";
+import { chatMessages, notifications, couriers } from "../db/schema";
+import { buildCouriersWorkbook, buildActiveStaffWorkbook, buildHoursWorkbook } from "../lib/reportBuilders";
+import { startOfWeek, dateKey } from "../lib/hours";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
@@ -37,6 +39,23 @@ async function sendMessage(text: string, replyTo?: number) {
   }
 }
 
+async function sendDocument(buffer: Buffer, filename: string, caption?: string) {
+  if (!API || !ADMIN_CHAT_ID) return;
+  try {
+    const form = new FormData();
+    form.append("chat_id", ADMIN_CHAT_ID);
+    if (caption) form.append("caption", caption);
+    form.append(
+      "document",
+      new Blob([new Uint8Array(buffer)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+      filename
+    );
+    await fetch(`${API}/sendDocument`, { method: "POST", body: form });
+  } catch (err) {
+    console.error("[telegram-bot] не удалось отправить файл", err);
+  }
+}
+
 async function handleUpdate(update: any) {
   const msg = update.message;
   if (!msg) return;
@@ -47,8 +66,29 @@ async function handleUpdate(update: any) {
     await sendMessage(
       "Сюда приходят сообщения курьеров из приложения.\n\n" +
         "Чтобы ответить конкретному курьеру — сделайте Reply (ответить) прямо на его сообщение здесь, в Telegram. " +
-        "Ваш ответ автоматически появится у курьера в приложении."
+        "Ваш ответ автоматически появится у курьера в приложении.\n\n" +
+        "Команды:\n" +
+        "/staff — актуальный штат (только активные курьеры), файлом .xlsx\n" +
+        "/report — отчёты: список курьеров и часы за текущую неделю, файлами .xlsx"
     );
+    return;
+  }
+
+  if (msg.text === "/staff") {
+    const activeCount = db.select().from(couriers).all().filter((c) => c.isActive).length;
+    await sendDocument(
+      buildActiveStaffWorkbook(),
+      `staff-${dateKey(new Date())}.xlsx`,
+      `Актуальный штат: ${activeCount} активных курьеров`
+    );
+    return;
+  }
+
+  if (msg.text === "/report") {
+    await sendMessage("Формирую отчёты...");
+    await sendDocument(buildCouriersWorkbook(), `couriers-${dateKey(new Date())}.xlsx`, "Курьеры (баланс, начисления)");
+    const weekStart = startOfWeek(new Date());
+    await sendDocument(buildHoursWorkbook(), `hours-${dateKey(weekStart)}.xlsx`, "Часы за текущую неделю (план/факт)");
     return;
   }
 

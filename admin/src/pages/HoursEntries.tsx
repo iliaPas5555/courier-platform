@@ -110,7 +110,15 @@ export default function HoursEntries() {
             <div key={r.id} style={{ padding: "10px 0", borderTop: "1px solid var(--border)" }}>
               <div className="flex-between">
                 <div>
-                  <b>{r.date}</b> — {r.hours} ч
+                  <b>{r.date}</b>
+                  {r.periodStart && r.periodEnd ? (
+                    <>
+                      {" "}
+                      {r.periodStart}–{r.periodEnd} ({r.hours} ч)
+                    </>
+                  ) : (
+                    <> — {r.hours} ч</>
+                  )}
                   <span className="muted" style={{ marginLeft: 10 }}>
                     отправлено {formatDateTime(r.submittedAt)}
                   </span>

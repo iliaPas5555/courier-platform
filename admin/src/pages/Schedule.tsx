@@ -174,6 +174,7 @@ export default function Schedule() {
             <tr>
               <th>Курьер</th>
               <th>Дата</th>
+              <th>Период</th>
               <th>Часы</th>
             </tr>
           </thead>
@@ -187,12 +188,13 @@ export default function Schedule() {
                     <Link to={`/couriers/${h.courierId}`}>{h.courier?.fullName ?? h.courierId}</Link>
                   </td>
                   <td>{formatDate(h.date)}</td>
+                  <td>{h.periodStart && h.periodEnd ? `${h.periodStart}–${h.periodEnd}` : "—"}</td>
                   <td>{h.hours} ч</td>
                 </tr>
               ))}
             {approvedHours?.length === 0 && (
               <tr>
-                <td colSpan={3} className="muted" style={{ padding: 20 }}>
+                <td colSpan={4} className="muted" style={{ padding: 20 }}>
                   Пока нет подтверждённых часов
                 </td>
               </tr>

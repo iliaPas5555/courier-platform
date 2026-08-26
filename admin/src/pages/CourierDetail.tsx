@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
-import type { Courier, Shift, Payment, FeedbackReport, PayrollEntry } from "../lib/api";
+import type { Courier, Shift, Payment, FeedbackReport, PayrollEntry, City } from "../lib/api";
 import { formatMoney, formatDateTime, STATUS_LABEL, STATUS_COLOR } from "../lib/format";
 
 interface CourierCard {
@@ -16,16 +16,49 @@ export default function CourierDetail() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<CourierCard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [city, setCity] = useState<City>("МСК");
+  const [personnelNumber, setPersonnelNumber] = useState("");
+  const [savingCard, setSavingCard] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
     api
       .get<CourierCard>(`/couriers/${id}`)
-      .then(setData)
+      .then((d) => {
+        setData(d);
+        setCity(d.courier.city ?? "МСК");
+        setPersonnelNumber(d.courier.personnelNumber ?? "");
+      })
       .catch((e) => setError(e.message));
   }, [id]);
 
   useEffect(load, [load]);
+
+  async function saveCard() {
+    if (!id) return;
+    setSavingCard(true);
+    setSavedMsg(false);
+    try {
+      await api.patch(`/couriers/${id}`, { city, personnelNumber: personnelNumber.trim() });
+      setSavedMsg(true);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось сохранить");
+    } finally {
+      setSavingCard(false);
+    }
+  }
+
+  async function toggleActive() {
+    if (!id || !data) return;
+    try {
+      await api.patch(`/couriers/${id}`, { isActive: !data.courier.isActive });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось изменить статус");
+    }
+  }
 
   async function markPaid(paymentId: string) {
     await api.patch(`/payments/${paymentId}/mark-paid`);
@@ -45,10 +78,20 @@ export default function CourierDetail() {
   return (
     <div>
       <div className="flex-between mb-12">
-        <h2 className="page-title">{courier.fullName}</h2>
-        <Link className="btn btn-primary" to={`/chat/${courier.id}`}>
-          Открыть чат
-        </Link>
+        <h2 className="page-title">
+          {courier.fullName}{" "}
+          <span className="badge" style={{ background: courier.isActive ? "#16a34a" : "#6b7280" }}>
+            {courier.isActive ? "активен" : "неактивен"}
+          </span>
+        </h2>
+        <div className="flex gap-8">
+          <button className="btn" onClick={toggleActive}>
+            {courier.isActive ? "Деактивировать" : "Активировать"}
+          </button>
+          <Link className="btn btn-primary" to={`/chat/${courier.id}`}>
+            Открыть чат
+          </Link>
+        </div>
       </div>
 
       <div className="card">
@@ -77,6 +120,26 @@ export default function CourierDetail() {
             style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 12, marginTop: 14 }}
           />
         )}
+
+        <div className="grid-2" style={{ marginTop: 16, alignItems: "end" }}>
+          <div className="field" style={{ margin: 0 }}>
+            <label>Город</label>
+            <select value={city} onChange={(e) => setCity(e.target.value as City)}>
+              <option value="МСК">МСК</option>
+              <option value="СПБ">СПБ</option>
+            </select>
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <label>Табельный номер</label>
+            <input value={personnelNumber} onChange={(e) => setPersonnelNumber(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex gap-8" style={{ marginTop: 12, alignItems: "center" }}>
+          <button className="btn btn-primary" disabled={savingCard} onClick={saveCard}>
+            Сохранить
+          </button>
+          {savedMsg && <span className="muted" style={{ color: "#16a34a" }}>Сохранено</span>}
+        </div>
       </div>
 
       <h3>Смены</h3>

@@ -29,6 +29,8 @@ export const couriers = sqliteTable("couriers", {
   photoUrl: text("photo_url"),
   medBookNumber: text("med_book_number").notNull(),
   bikeNumber: text("bike_number").notNull(),
+  city: text("city"), // 'МСК' | 'СПБ'
+  personnelNumber: text("personnel_number"), // табельный номер — вносится админом
   telegramChatId: text("telegram_chat_id"),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   balance: integer("balance").notNull().default(0), // в копейках
@@ -151,8 +153,9 @@ export const samokatHours = sqliteTable(
   })
 );
 
-// Курьер сам проставляет отработанные часы за день (например, за неделю разом) — попадают
-// в сверку и статистику только после одобрения админом. status: PENDING | APPROVED | REJECTED
+// Курьер сам проставляет период смены (с — по) за день (например, за неделю разом) —
+// часы считает система; в сверку и статистику попадают только после одобрения админом.
+// status: PENDING | APPROVED | REJECTED
 export const hoursEntries = sqliteTable(
   "hours_entries",
   {
@@ -161,7 +164,9 @@ export const hoursEntries = sqliteTable(
       .notNull()
       .references(() => couriers.id, { onDelete: "cascade" }),
     date: text("date").notNull(), // 'YYYY-MM-DD'
-    hours: real("hours").notNull(),
+    periodStart: text("period_start"), // 'HH:MM'
+    periodEnd: text("period_end"), // 'HH:MM'
+    hours: real("hours").notNull(), // считается сервером из periodStart/periodEnd
     status: text("status").notNull().default("PENDING"),
     adminNote: text("admin_note"),
     submittedAt: integer("submitted_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),

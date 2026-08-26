@@ -11,16 +11,31 @@ function formatShortDate(iso: string) {
   return `${d}.${m}`;
 }
 
+function computeHours(start: string, end: string): number | null {
+  if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return null;
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let startMin = sh * 60 + sm;
+  let endMin = eh * 60 + em;
+  if (endMin <= startMin) endMin += 24 * 60;
+  return Math.round(((endMin - startMin) / 60) * 10) / 10;
+}
+
 const STATUS_BADGE: Record<string, { label: string; color: string }> = {
   PENDING: { label: "На проверке", color: "#d97706" },
   APPROVED: { label: "Подтверждено", color: "#16a34a" },
   REJECTED: { label: "Отклонено", color: "#dc2626" },
 };
 
+interface DayValue {
+  periodStart: string;
+  periodEnd: string;
+}
+
 export default function HoursSubmit() {
   const navigate = useNavigate();
   const [data, setData] = useState<HoursEntriesMe | null>(null);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, DayValue>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -28,23 +43,28 @@ export default function HoursSubmit() {
   useEffect(() => {
     api.get<HoursEntriesMe>("/hours-entries/me").then((d) => {
       setData(d);
-      const v: Record<string, string> = {};
-      for (const day of d.days) if (day.hours != null) v[day.date] = String(day.hours);
+      const v: Record<string, DayValue> = {};
+      for (const day of d.days) {
+        if (day.periodStart || day.periodEnd) {
+          v[day.date] = { periodStart: day.periodStart ?? "", periodEnd: day.periodEnd ?? "" };
+        }
+      }
       setValues(v);
     });
   }, []);
 
+  function setDay(date: string, patch: Partial<DayValue>) {
+    const empty: DayValue = { periodStart: "", periodEnd: "" };
+    setValues((v) => ({ ...v, [date]: { ...empty, ...v[date], ...patch } }));
+  }
+
   async function submit() {
     const days = Object.entries(values)
-      .filter(([, v]) => v.trim() !== "")
-      .map(([date, v]) => ({ date, hours: Number(v) }));
+      .filter(([, v]) => v.periodStart && v.periodEnd)
+      .map(([date, v]) => ({ date, periodStart: v.periodStart, periodEnd: v.periodEnd }));
 
     if (days.length === 0) {
-      setError("Укажите часы хотя бы за один день");
-      return;
-    }
-    if (days.some((d) => Number.isNaN(d.hours) || d.hours < 0 || d.hours > 24)) {
-      setError("Часы должны быть числом от 0 до 24");
+      setError("Укажите период смены хотя бы за один день");
       return;
     }
 
@@ -72,14 +92,16 @@ export default function HoursSubmit() {
       </div>
       <div className="screen">
         <div className="card muted">
-          Проставьте, сколько часов вы отработали в каждый день текущей недели. После отправки администратор
-          подтвердит или отклонит запись — эти часы попадут в общую сверку.
+          Укажите время начала и конца смены по каждому дню текущей недели — часы система посчитает сама.
+          После отправки администратор подтвердит или отклонит запись.
         </div>
 
         {success && <div className="success-text">Часы отправлены на подтверждение</div>}
 
         {data?.days.map((day, i) => {
           const badge = day.status ? STATUS_BADGE[day.status] : null;
+          const v = values[day.date] ?? { periodStart: "", periodEnd: "" };
+          const preview = computeHours(v.periodStart, v.periodEnd);
           return (
             <div className="card" key={day.date}>
               <div className="flex-between mb-12">
@@ -92,16 +114,25 @@ export default function HoursSubmit() {
                   </span>
                 )}
               </div>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                max={24}
-                step={0.5}
-                placeholder="Часы"
-                value={values[day.date] ?? ""}
-                onChange={(e) => setValues((v) => ({ ...v, [day.date]: e.target.value }))}
-              />
+              <div className="flex gap-8">
+                <div style={{ flex: 1 }}>
+                  <label>С</label>
+                  <input
+                    type="time"
+                    value={v.periodStart}
+                    onChange={(e) => setDay(day.date, { periodStart: e.target.value })}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label>По</label>
+                  <input
+                    type="time"
+                    value={v.periodEnd}
+                    onChange={(e) => setDay(day.date, { periodEnd: e.target.value })}
+                  />
+                </div>
+              </div>
+              {preview != null && <div className="muted" style={{ marginTop: 8 }}>Итого: {preview} ч</div>}
               {day.status === "REJECTED" && day.adminNote && (
                 <div className="error-text" style={{ marginTop: 8 }}>
                   Причина отклонения: {day.adminNote}
@@ -109,7 +140,7 @@ export default function HoursSubmit() {
               )}
               {day.status === "APPROVED" && (
                 <div className="muted" style={{ marginTop: 8 }}>
-                  Изменение значения отправит запись на повторную проверку
+                  Изменение периода отправит запись на повторную проверку
                 </div>
               )}
             </div>

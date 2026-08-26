@@ -9,14 +9,19 @@ import { upload, fileUrl } from "../middleware/upload";
 
 export const profileRequestsRouter = Router();
 
-const EDITABLE_FIELDS = ["fullName", "phone", "medBookNumber", "bikeNumber"] as const;
+const EDITABLE_FIELDS = ["fullName", "phone", "medBookNumber", "bikeNumber", "city"] as const;
 type EditableField = (typeof EDITABLE_FIELDS)[number];
 
 function fieldLabel(f: string) {
   return (
-    { fullName: "ФИО", phone: "Телефон", medBookNumber: "Мед. книжка", bikeNumber: "Велосипед", photoUrl: "Фото" }[
-      f
-    ] || f
+    {
+      fullName: "ФИО",
+      phone: "Телефон",
+      medBookNumber: "Мед. книжка",
+      bikeNumber: "Велосипед",
+      city: "Город",
+      photoUrl: "Фото",
+    }[f] || f
   );
 }
 

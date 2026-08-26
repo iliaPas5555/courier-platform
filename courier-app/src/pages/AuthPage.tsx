@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
+import type { City } from "../lib/api";
 
 export default function AuthPage() {
   const { login, register, loading } = useAuth();
@@ -19,6 +20,7 @@ export default function AuthPage() {
   const [regPassword, setRegPassword] = useState("");
   const [medBookNumber, setMedBookNumber] = useState("");
   const [bikeNumber, setBikeNumber] = useState("");
+  const [city, setCity] = useState<City>("МСК");
   const [photo, setPhoto] = useState<File | null>(null);
 
   async function handleLogin(e: FormEvent) {
@@ -46,6 +48,7 @@ export default function AuthPage() {
       form.append("password", regPassword);
       form.append("medBookNumber", medBookNumber);
       form.append("bikeNumber", bikeNumber);
+      form.append("city", city);
       form.append("photo", photo);
       await register(form);
       navigate("/");
@@ -106,6 +109,13 @@ export default function AuthPage() {
             <div className="field">
               <label>Номер велосипеда</label>
               <input value={bikeNumber} onChange={(e) => setBikeNumber(e.target.value)} required />
+            </div>
+            <div className="field">
+              <label>Город</label>
+              <select value={city} onChange={(e) => setCity(e.target.value as City)} required>
+                <option value="МСК">МСК</option>
+                <option value="СПБ">СПБ</option>
+              </select>
             </div>
             <div className="field">
               <label>Фото</label>
