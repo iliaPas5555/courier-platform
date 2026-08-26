@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { eq, desc } from "drizzle-orm";
+import path from "path";
+import fs from "fs";
 import { db } from "../db/client";
 import { couriers, shifts, payments, feedbackReports, payrollEntries } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
@@ -91,6 +93,31 @@ couriersRouter.patch("/:id", requireAuth("admin"), (req, res) => {
     .get();
 
   res.json(stripSecret(updated));
+});
+
+// Админ: удалить курьера полностью — необратимо. Все связанные записи (смены, выплаты,
+// начисления, часы, опоздания, чат, уведомления и т.п.) удаляются каскадом на уровне БД
+// (ON DELETE CASCADE), фото курьера подчищается с диска отдельно (best-effort).
+couriersRouter.delete("/:id", requireAuth("admin"), (req, res) => {
+  const courier = db.select().from(couriers).where(eq(couriers.id, req.params.id)).get();
+  if (!courier) return res.status(404).json({ error: "Курьер не найден" });
+
+  db.delete(couriers).where(eq(couriers.id, req.params.id)).run();
+
+  if (courier.photoUrl) {
+    try {
+      const filename = courier.photoUrl.split("/uploads/")[1];
+      if (filename) {
+        const uploadDir = process.env.UPLOAD_DIR || "./uploads";
+        const filePath = path.join(uploadDir, filename);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }
+    } catch (err) {
+      console.error("Не удалось удалить фото курьера с диска", err);
+    }
+  }
+
+  res.status(204).end();
 });
 
 // Админ: полная карточка курьера — профиль + последние смены/выплаты/обращения

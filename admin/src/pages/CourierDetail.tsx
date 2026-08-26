@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import type { Courier, Shift, Payment, FeedbackReport, PayrollEntry, City } from "../lib/api";
 import { formatMoney, formatDateTime, STATUS_LABEL, STATUS_COLOR } from "../lib/format";
@@ -14,12 +14,15 @@ interface CourierCard {
 
 export default function CourierDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [data, setData] = useState<CourierCard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState<City>("МСК");
   const [personnelNumber, setPersonnelNumber] = useState("");
   const [savingCard, setSavingCard] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -70,6 +73,19 @@ export default function CourierDetail() {
     load();
   }
 
+  async function deleteCourier() {
+    if (!id) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await api.del(`/couriers/${id}`);
+      navigate("/couriers");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось удалить курьера");
+      setDeleting(false);
+    }
+  }
+
   if (error) return <div className="error-text">{error}</div>;
   if (!data) return <div className="muted">Загрузка...</div>;
 
@@ -91,8 +107,29 @@ export default function CourierDetail() {
           <Link className="btn btn-primary" to={`/chat/${courier.id}`}>
             Открыть чат
           </Link>
+          <button className="btn btn-danger" onClick={() => setConfirmingDelete(true)}>
+            Удалить курьера
+          </button>
         </div>
       </div>
+
+      {confirmingDelete && (
+        <div className="card" style={{ borderColor: "#dc2626" }}>
+          <b>Удалить курьера «{courier.fullName}» безвозвратно?</b>
+          <p className="muted" style={{ margin: "8px 0" }}>
+            Будут удалены профиль, смены, выплаты, начисления, часы, опоздания, чат и уведомления. Отменить это
+            действие нельзя.
+          </p>
+          <div className="flex gap-8">
+            <button className="btn btn-danger" disabled={deleting} onClick={deleteCourier}>
+              {deleting ? "Удаляем..." : "Да, удалить безвозвратно"}
+            </button>
+            <button className="btn" disabled={deleting} onClick={() => setConfirmingDelete(false)}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="grid-2">
