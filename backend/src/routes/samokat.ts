@@ -14,13 +14,29 @@ function normalizePhone(raw: unknown): string {
   return String(raw ?? "").replace(/\D/g, "").slice(-10);
 }
 
-const rowSchema = z.object({
-  phone: z.string(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Дата в формате YYYY-MM-DD"),
-  intervalHours: z.number().nullable().optional(),
-  confirmedHours: z.number().nullable().optional(),
-  confirmationPct: z.number().nullable().optional(),
-});
+// На HR-платформе телефон в таблице маскирован (+7 999-53X-XX-05), поэтому
+// основной способ сопоставления — по ФИО (там оно показывается полностью).
+// Телефон остаётся как более надёжный вариант на случай, если он всё же известен.
+function normalizeName(raw: unknown): string {
+  return String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/ё/g, "е");
+}
+
+const rowSchema = z
+  .object({
+    phone: z.string().optional(),
+    fullName: z.string().optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Дата в формате YYYY-MM-DD"),
+    intervalHours: z.number().nullable().optional(),
+    confirmedHours: z.number().nullable().optional(),
+    confirmationPct: z.number().nullable().optional(),
+  })
+  .refine((r) => (r.phone && r.phone.trim()) || (r.fullName && r.fullName.trim()), {
+    message: "Нужен phone или fullName",
+  });
 
 // Админ / сервисный вызов: загрузить строки часов с HR-платформы (upsert по курьеру+дате)
 samokatRouter.post("/import", requireAuth("admin"), (req, res) => {
@@ -31,14 +47,17 @@ samokatRouter.post("/import", requireAuth("admin"), (req, res) => {
 
   const allCouriers = db.select().from(couriers).all();
   const byPhone = new Map(allCouriers.map((c) => [normalizePhone(c.phone), c]));
+  const byName = new Map(allCouriers.map((c) => [normalizeName(c.fullName), c]));
 
   let matched = 0;
-  const unmatched: { phone: string; date: string }[] = [];
+  const unmatched: { phone: string; fullName: string; date: string }[] = [];
 
   for (const row of parsed.data.rows) {
-    const courier = byPhone.get(normalizePhone(row.phone));
+    const courier =
+      (row.phone && byPhone.get(normalizePhone(row.phone))) ||
+      (row.fullName && byName.get(normalizeName(row.fullName)));
     if (!courier) {
-      unmatched.push({ phone: row.phone, date: row.date });
+      unmatched.push({ phone: row.phone ?? "", fullName: row.fullName ?? "", date: row.date });
       continue;
     }
 
