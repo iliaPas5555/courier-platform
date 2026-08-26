@@ -93,6 +93,29 @@ CREATE TABLE IF NOT EXISTS feedback_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_courier_created ON feedback_reports(courier_id, created_at);
 
+CREATE TABLE IF NOT EXISTS profile_change_requests (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  changes TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  admin_note TEXT,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  reviewed_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_profile_requests_status ON profile_change_requests(status);
+CREATE INDEX IF NOT EXISTS idx_profile_requests_courier ON profile_change_requests(courier_id);
+
+CREATE TABLE IF NOT EXISTS samokat_hours (
+  id TEXT PRIMARY KEY,
+  courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  interval_hours REAL,
+  confirmed_hours REAL,
+  confirmation_pct INTEGER,
+  imported_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_samokat_hours_courier_date ON samokat_hours(courier_id, date);
+
 CREATE TABLE IF NOT EXISTS notifications (
   id TEXT PRIMARY KEY,
   courier_id TEXT NOT NULL REFERENCES couriers(id) ON DELETE CASCADE,

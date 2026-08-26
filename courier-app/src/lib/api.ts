@@ -105,6 +105,40 @@ export interface PayrollEntry {
   createdAt: string;
 }
 
+export interface ProfileChangeRequest {
+  id: string;
+  changes: Record<string, string>;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  adminNote: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+export const FIELD_LABEL: Record<string, string> = {
+  fullName: "ФИО",
+  phone: "Телефон",
+  medBookNumber: "Мед. книжка",
+  bikeNumber: "Велосипед",
+  photoUrl: "Фото",
+};
+
+export interface HoursDay {
+  shiftId: string;
+  date: string;
+  planHours: number;
+  factHours: number;
+  status: string;
+  isShort: boolean;
+}
+
+export interface HoursMe {
+  weekStart: string;
+  targetHours: number;
+  totalHours: number;
+  progressPct: number;
+  days: HoursDay[];
+}
+
 export interface AppNotification {
   id: string;
   type: string;

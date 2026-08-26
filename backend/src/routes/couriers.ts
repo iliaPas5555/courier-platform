@@ -1,10 +1,18 @@
 import { Router } from "express";
+import { z } from "zod";
+import { randomBytes } from "crypto";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../db/client";
 import { couriers, shifts, payments, feedbackReports, payrollEntries } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
+import { hashPassword } from "../lib/auth";
+import { upload, fileUrl } from "../middleware/upload";
 
 export const couriersRouter = Router();
+
+function generatePassword(): string {
+  return randomBytes(6).toString("base64url"); // ~8 символов, без похожих на пароль-в-URL проблем
+}
 
 function stripSecret<T extends { passwordHash?: unknown }>(c: T) {
   const { passwordHash, ...rest } = c;
@@ -22,6 +30,34 @@ couriersRouter.get("/me", requireAuth("courier"), (req, res) => {
 couriersRouter.get("/", requireAuth("admin"), (_req, res) => {
   const list = db.select().from(couriers).orderBy(desc(couriers.createdAt)).all();
   res.json(list.map(stripSecret));
+});
+
+const adminCreateSchema = z.object({
+  fullName: z.string().min(2, "Укажите ФИО"),
+  phone: z.string().min(5, "Укажите телефон"),
+  medBookNumber: z.string().min(1, "Укажите номер медицинской книжки"),
+  bikeNumber: z.string().min(1, "Укажите номер велосипеда"),
+});
+
+// Админ: зарегистрировать курьера напрямую из панели (минуя саморегистрацию в приложении).
+// Пароль генерируется автоматически и возвращается один раз в ответе — админ передаёт его курьеру.
+couriersRouter.post("/", requireAuth("admin"), upload.single("photo"), (req, res) => {
+  const parsed = adminCreateSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  const existing = db.select().from(couriers).where(eq(couriers.phone, parsed.data.phone)).get();
+  if (existing) return res.status(409).json({ error: "Курьер с таким телефоном уже зарегистрирован" });
+
+  const password = generatePassword();
+  const photoUrl = req.file ? fileUrl(req, req.file.filename) : null;
+
+  const courier = db
+    .insert(couriers)
+    .values({ ...parsed.data, passwordHash: hashPassword(password), photoUrl })
+    .returning()
+    .get();
+
+  res.status(201).json({ courier: stripSecret(courier), password });
 });
 
 // Админ: полная карточка курьера — профиль + последние смены/выплаты/обращения

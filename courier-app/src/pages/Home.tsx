@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
-import type { Shift, AppNotification } from "../lib/api";
+import type { Shift, AppNotification, HoursMe } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { formatMoney, formatDateTime, STATUS_LABEL, STATUS_COLOR } from "../lib/format";
 import BottomNav from "../components/BottomNav";
@@ -10,16 +10,19 @@ export default function Home() {
   const { courier, refreshProfile } = useAuth();
   const [shifts, setShifts] = useState<Shift[] | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [hours, setHours] = useState<HoursMe | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [s, n] = await Promise.all([
+    const [s, n, h] = await Promise.all([
       api.get<Shift[]>("/shifts/me"),
       api.get<AppNotification[]>("/notifications/me"),
+      api.get<HoursMe>("/shifts/hours/me"),
     ]);
     setShifts(s);
     setNotifications(n.slice(0, 5));
+    setHours(h);
     refreshProfile().catch(() => {});
   }, [refreshProfile]);
 
@@ -68,7 +71,27 @@ export default function Home() {
         <div className="balance-card">
           <div className="label">Баланс (удержано до расчёта)</div>
           <div className="value">{formatMoney(courier?.balance ?? 0)}</div>
+          {hours && (
+            <>
+              <div className="flex-between" style={{ marginTop: 14, fontSize: 13 }}>
+                <span>Часы за неделю</span>
+                <span>
+                  {hours.totalHours} / {hours.targetHours} ч
+                </span>
+              </div>
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${hours.progressPct}%` }} />
+              </div>
+            </>
+          )}
         </div>
+
+        {hours?.days.some((d) => d.isShort) && (
+          <div className="alert-banner">
+            У вас была смена короче 12 часов. Пожалуйста, укажите причину в{" "}
+            <Link to="/feedback/new">форме обратной связи</Link>.
+          </div>
+        )}
 
         {focusShift ? (
           <div className="card">

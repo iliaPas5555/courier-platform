@@ -1,7 +1,7 @@
 // Схема данных курьерской платформы (Drizzle ORM, SQLite для разработки).
 // Для продакшена см. docs/DEPLOY.md — переезд на Postgres меняет только db/client.ts.
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
@@ -115,7 +115,43 @@ export const feedbackReports = sqliteTable("feedback_reports", {
   createdAt: createdAt(),
 });
 
-// type: SHIFT_REMINDER | SHIFT_NOT_STARTED | PAYMENT_RECEIVED | CHAT_REPLY | GENERIC
+// Заявка курьера на изменение анкетных данных — применяется только после одобрения админом.
+// changes — JSON-объект с предложенными полями: fullName/phone/medBookNumber/bikeNumber/photoUrl.
+// status: PENDING | APPROVED | REJECTED
+export const profileChangeRequests = sqliteTable("profile_change_requests", {
+  id: id(),
+  courierId: text("courier_id")
+    .notNull()
+    .references(() => couriers.id, { onDelete: "cascade" }),
+  changes: text("changes").notNull(),
+  status: text("status").notNull().default("PENDING"),
+  adminNote: text("admin_note"),
+  createdAt: createdAt(),
+  reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+});
+
+// Часы курьера, импортированные с HR-платформы (hiring.samokat.ru) — для сверки с нашими
+// данными по сменам. intervalHours — «Интервалы», confirmedHours — «Подтв. часы»,
+// confirmationPct — «% подтверждения» (null, если «–»). Уникально по (courierId, date).
+export const samokatHours = sqliteTable(
+  "samokat_hours",
+  {
+    id: id(),
+    courierId: text("courier_id")
+      .notNull()
+      .references(() => couriers.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // 'YYYY-MM-DD'
+    intervalHours: real("interval_hours"),
+    confirmedHours: real("confirmed_hours"),
+    confirmationPct: integer("confirmation_pct"),
+    importedAt: integer("imported_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  },
+  (t) => ({
+    courierDate: uniqueIndex("idx_samokat_hours_courier_date").on(t.courierId, t.date),
+  })
+);
+
+// type: SHIFT_REMINDER | SHIFT_NOT_STARTED | PAYMENT_RECEIVED | CHAT_REPLY | GENERIC | SHORT_SHIFT | PROFILE_REQUEST
 export const notifications = sqliteTable("notifications", {
   id: id(),
   courierId: text("courier_id")

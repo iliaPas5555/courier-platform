@@ -46,6 +46,22 @@ export const api = {
 
 export { API_BASE };
 
+// Скачать файл (xlsx-отчёты) с авторизацией — обычный fetch не подставляет заголовок сам.
+export async function downloadFile(path: string, filename: string) {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new Error("Не удалось скачать файл");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // ---- Типы ----
 export interface Courier {
   id: string;
@@ -125,3 +141,52 @@ export interface ChatSummary {
   unread: number;
   lastAt: string;
 }
+
+export interface ProfileChangeRequest {
+  id: string;
+  courierId: string;
+  changes: Record<string, string>;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  adminNote: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  courier: { id: string; fullName: string; phone: string } | null;
+}
+
+export interface AdminCreateCourierResult {
+  courier: Courier;
+  password: string;
+}
+
+export interface HoursDay {
+  date: string;
+  planHours: number;
+  factHours: number;
+  isShort: boolean;
+  samokatConfirmedHours: number | null;
+  samokatIntervalHours: number | null;
+  mismatch: boolean;
+}
+
+export interface HoursSummaryCourier {
+  courierId: string;
+  fullName: string;
+  phone: string;
+  totalFactHours: number;
+  days: HoursDay[];
+}
+
+export interface HoursSummary {
+  from: string;
+  to: string;
+  dates: string[];
+  couriers: HoursSummaryCourier[];
+}
+
+export const FIELD_LABEL: Record<string, string> = {
+  fullName: "ФИО",
+  phone: "Телефон",
+  medBookNumber: "Мед. книжка",
+  bikeNumber: "Велосипед",
+  photoUrl: "Фото",
+};

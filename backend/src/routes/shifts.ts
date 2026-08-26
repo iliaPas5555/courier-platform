@@ -1,9 +1,19 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, lt } from "drizzle-orm";
 import { db } from "../db/client";
-import { shifts } from "../db/schema";
+import { shifts, notifications, couriers, samokatHours } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
+import {
+  dateKey,
+  factHours,
+  planHours,
+  startOfWeek,
+  addDays,
+  round1,
+  WEEKLY_TARGET_HOURS,
+  SHORT_SHIFT_THRESHOLD_HOURS,
+} from "../lib/hours";
 
 export const shiftsRouter = Router();
 
@@ -93,11 +103,116 @@ shiftsRouter.post("/:id/check-out", requireAuth("courier"), (req, res) => {
   if (!shift.checkInAt) {
     return res.status(409).json({ error: "Сначала отметьте выход на смену" });
   }
+  const checkOutAt = new Date();
   const updated = db
     .update(shifts)
-    .set({ checkOutAt: new Date(), status: "COMPLETED" })
+    .set({ checkOutAt, status: "COMPLETED" })
     .where(eq(shifts.id, shift.id))
     .returning()
     .get();
-  res.json(updated);
+
+  const worked = factHours({ checkInAt: shift.checkInAt, checkOutAt });
+  const isShort = worked > 0 && worked < SHORT_SHIFT_THRESHOLD_HOURS;
+  if (isShort) {
+    db.insert(notifications)
+      .values({
+        courierId: req.auth!.id,
+        type: "SHORT_SHIFT",
+        message: `Смена короче ${SHORT_SHIFT_THRESHOLD_HOURS} часов (${round1(worked)} ч). Пожалуйста, укажите причину в форме обратной связи.`,
+      })
+      .run();
+  }
+
+  res.json({ ...updated, workedHours: round1(worked), isShort });
+});
+
+// Курьер: прогресс часов за текущую неделю (цель — 72 ч/нед) + подсветка дней короче 12 ч
+shiftsRouter.get("/hours/me", requireAuth("courier"), (req, res) => {
+  const weekStart = startOfWeek(new Date());
+  const weekEnd = addDays(weekStart, 7);
+
+  const list = db
+    .select()
+    .from(shifts)
+    .where(
+      and(eq(shifts.courierId, req.auth!.id), gte(shifts.scheduledStart, weekStart), lt(shifts.scheduledStart, weekEnd))
+    )
+    .orderBy(shifts.scheduledStart)
+    .all();
+
+  const days = list.map((s) => {
+    const fact = round1(factHours(s));
+    return {
+      shiftId: s.id,
+      date: dateKey(s.scheduledStart),
+      planHours: round1(planHours(s)),
+      factHours: fact,
+      status: s.status,
+      isShort: s.status === "COMPLETED" && fact > 0 && fact < SHORT_SHIFT_THRESHOLD_HOURS,
+    };
+  });
+
+  const totalHours = round1(days.reduce((sum, d) => sum + d.factHours, 0));
+
+  res.json({
+    weekStart: dateKey(weekStart),
+    targetHours: WEEKLY_TARGET_HOURS,
+    totalHours,
+    progressPct: Math.min(100, Math.round((totalHours / WEEKLY_TARGET_HOURS) * 100)),
+    days,
+  });
+});
+
+// Админ: сверка часов по всем курьерам за период (по умолчанию — текущая неделя).
+// Сравнивает наши данные (план/факт по сменам) с данными из HR-платформы (samokat_hours).
+shiftsRouter.get("/hours/summary", requireAuth("admin"), (req, res) => {
+  const from = req.query.from ? new Date(String(req.query.from)) : startOfWeek(new Date());
+  const to = req.query.to ? new Date(String(req.query.to)) : addDays(from, 7);
+
+  const allCouriers = db.select().from(couriers).orderBy(couriers.fullName).all();
+  const shiftRows = db
+    .select()
+    .from(shifts)
+    .where(and(gte(shifts.scheduledStart, from), lt(shifts.scheduledStart, to)))
+    .all();
+  const samokatRows = db.select().from(samokatHours).all();
+
+  const dates: string[] = [];
+  for (let d = new Date(from); d < to; d = addDays(d, 1)) dates.push(dateKey(d));
+
+  const result = allCouriers.map((c) => {
+    const cShifts = shiftRows.filter((s) => s.courierId === c.id);
+    const cSamokat = new Map(
+      samokatRows.filter((r) => r.courierId === c.id).map((r) => [r.date, r])
+    );
+
+    let totalFact = 0;
+    const days = dates.map((date) => {
+      const shift = cShifts.find((s) => dateKey(s.scheduledStart) === date);
+      const fact = shift ? round1(factHours(shift)) : 0;
+      const plan = shift ? round1(planHours(shift)) : 0;
+      const samokat = cSamokat.get(date);
+      totalFact += fact;
+      return {
+        date,
+        planHours: plan,
+        factHours: fact,
+        isShort: shift?.status === "COMPLETED" && fact > 0 && fact < SHORT_SHIFT_THRESHOLD_HOURS,
+        samokatConfirmedHours: samokat?.confirmedHours ?? null,
+        samokatIntervalHours: samokat?.intervalHours ?? null,
+        mismatch:
+          samokat?.confirmedHours != null && Math.abs((samokat.confirmedHours ?? 0) - fact) > 0.5,
+      };
+    });
+
+    return {
+      courierId: c.id,
+      fullName: c.fullName,
+      phone: c.phone,
+      totalFactHours: round1(totalFact),
+      days,
+    };
+  });
+
+  res.json({ from: dateKey(from), to: dateKey(addDays(to, -1)), dates, couriers: result });
 });

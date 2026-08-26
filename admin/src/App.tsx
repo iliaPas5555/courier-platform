@@ -11,6 +11,8 @@ import Register from "./pages/Register";
 import ChatInbox from "./pages/ChatInbox";
 import ChatWithCourier from "./pages/ChatWithCourier";
 import FeedbackAll from "./pages/FeedbackAll";
+import Hours from "./pages/Hours";
+import ProfileRequests from "./pages/ProfileRequests";
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { admin } = useAuth();
@@ -34,6 +36,8 @@ function AppRoutes() {
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/payments" element={<Payments />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/hours" element={<Hours />} />
+        <Route path="/profile-requests" element={<ProfileRequests />} />
         <Route path="/chat" element={<ChatInbox />} />
         <Route path="/chat/:courierId" element={<ChatWithCourier />} />
         <Route path="/feedback" element={<FeedbackAll />} />
